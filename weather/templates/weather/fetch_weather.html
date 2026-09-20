@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Fetch Historical Weather</title>
+</head>
+<body>
+    <h1>Fetch Historical Weather</h1>
+
+    <form method="post">
+        {% csrf_token %}
+
+        {{ form.as_p }}
+
+        <button type="submit">Fetch Weather</button>
+    </form>
+
+    <p>
+        <a href="{% url 'location_list' %}">← Back to Locations</a>
+    </p>
+</body>
+</html>

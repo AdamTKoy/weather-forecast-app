@@ -1,0 +1,496 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Historical Weather</title>
+    <style>
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+
+        th,
+        td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: center;
+        }
+
+        th {
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <p>
+        <a href="{% url 'location_list' %}">← Back to Locations</a>
+    </p>
+
+    <h1>{{ location.name }}, {{ location.admin1 }}, {{ location.country }}</h1>
+    <p>
+        <strong>Coordinates (latitude, longitude):</strong>
+        {{ location.latitude|floatformat:4 }}, {{ location.longitude|floatformat:4 }}
+    </p>
+    <p>
+        <strong>Timezone:</strong>
+        {{ location.timezone }}
+    </p>
+
+    <h2>Filter Historical Data</h2>
+    <p>Enter a start date, end date, or both to filter the historical weather data.</p>
+
+    <form method="get">
+        {{ filter_form.as_p }}
+
+        <button type="submit">Apply Filter</button>
+        <a href="{% url 'historical_weather' location.id %}">Clear Filter</a>
+    </form>
+
+    <p>
+        <strong>Historical Data:</strong>
+        {% if observations %}
+            {{ observations.first.date|date:"M j, Y" }} through {{ observations.last.date|date:"M j, Y" }}
+        {% else %}
+            No observations found for the selected date range.
+        {% endif %}
+    </p>
+
+    {% if not observations %}
+        <p><strong>No summary statistics available.</strong></p>
+    {% endif %}
+
+    {% if observations %}
+    <h3>Summary Values</h3>
+    <table>
+        <thead>
+            <tr>
+                <th>Observation Count</th>
+                <th>Highest Temp</th>
+                <th>Lowest Temp</th>
+                <th>Avg Temp</th>
+                <th>Avg Daily Precip</th>
+                <th>Total Precip</th>
+                <th>Avg Humidity</th>
+                <th>Avg Wind Speed</th>
+                <th>Avg Surface Pressure</th>
+                <th>Avg Wind Gusts</th>
+            </tr>
+        </thead>
+        <tbody>
+                <tr>
+                    <td>{{ observation_count }}</td>
+                    <td>        
+                        {% if highest_temperature is not None %}
+                            {{ highest_temperature|floatformat:1 }} °F
+                        {% else %}
+                            N/A
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if lowest_temperature is not None %}
+                            {{ lowest_temperature|floatformat:1 }} °F
+                        {% else %}
+                            N/A
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if average_temperature is not None %}
+                            {{ average_temperature|floatformat:1 }} °F
+                        {% else %}
+                            N/A
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if average_precipitation is not None %}
+                            {{ average_precipitation|floatformat:2 }} in
+                        {% else %}
+                            N/A
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if total_precipitation is not None %}
+                            {{ total_precipitation|floatformat:2 }} in
+                        {% else %}
+                            N/A
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if average_humidity is not None %}
+                            {{ average_humidity|floatformat:2 }}%
+                        {% else %}
+                            N/A
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if average_wind_speed is not None %}
+                            {{ average_wind_speed|floatformat:2 }} mph
+                        {% else %}
+                            N/A
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if average_pressure is not None %}
+                            {{ average_pressure|floatformat:2 }} hPa
+                        {% else %}
+                            N/A
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if average_wind_gusts is not None %}
+                            {{ average_wind_gusts|floatformat:2 }} mph
+                        {% else %}
+                            N/A
+                        {% endif %}
+                    </td>
+                </tr>
+
+        </tbody>
+    </table>
+    {% endif %}
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    {{ dates|json_script:"chart-dates" }}
+    {{ temperature_max|json_script:"chart-temperature-max" }}
+    {{ temperature_min|json_script:"chart-temperature-min" }}
+    {{ precipitation|json_script:"chart-precipitation" }}
+    {{ rain|json_script:"chart-rain" }}
+    {{ snowfall|json_script:"chart-snowfall" }}
+    {{ humidity|json_script:"chart-humidity" }}
+    {{ wind_speed|json_script:"chart-wind-speed" }}
+    {{ wind_gusts|json_script:"chart-wind-gusts" }}
+    {{ pressure|json_script:"chart-pressure" }}
+
+    <!--CHART INITIALIZE SECTION-->
+    <script>
+
+        const chartDates = JSON.parse(
+            document.getElementById("chart-dates").textContent
+        );
+
+        const chartTemperatureMax = JSON.parse(
+            document.getElementById("chart-temperature-max").textContent
+        );
+
+        const chartTemperatureMin = JSON.parse(
+            document.getElementById("chart-temperature-min").textContent
+        );
+
+        const chartPrecipitation = JSON.parse(
+            document.getElementById("chart-precipitation").textContent
+        );
+
+        const chartRain = JSON.parse(
+            document.getElementById("chart-rain").textContent
+        );
+
+        const chartSnowfall = JSON.parse(
+            document.getElementById("chart-snowfall").textContent
+        );
+
+        const chartHumidity = JSON.parse(
+            document.getElementById("chart-humidity").textContent
+        );
+
+        const chartWindSpeed = JSON.parse(
+            document.getElementById("chart-wind-speed").textContent
+        );
+
+        const chartWindGusts = JSON.parse(
+            document.getElementById("chart-wind-gusts").textContent
+        );
+
+        const chartPressure = JSON.parse(
+            document.getElementById("chart-pressure").textContent
+        );
+        </script>
+
+        <!--CHART DEFINITION SECTION-->
+        {% if observations %}
+        <h2>Daily Temperature</h2>
+        <canvas id="temperatureChart"></canvas>
+        <script>
+            new Chart(document.getElementById("temperatureChart"), {
+                type: "line",
+                data: {
+                    labels: chartDates,
+                    datasets: [
+                        {
+                            label: "High Temperature (°F)",
+                            data: chartTemperatureMax,
+                            tension: 0.2
+                        },
+                        {
+                            label: "Low Temperature (°F)",
+                            data: chartTemperatureMin,
+                            tension: 0.2
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        y: {
+                            title: {
+                                display: true,
+                                text: "Temperature (°F)"
+                            }
+                        }
+                    }
+                }
+            });
+        </script>
+
+    <h2>Daily Precipitation</h2>
+    <canvas id="precipitationChart"></canvas>
+    <script>
+        new Chart(document.getElementById("precipitationChart"), {
+            type: "bar",
+            data: {
+                labels: chartDates,
+                datasets: [
+                    {
+                        label: "Precipitation (in)",
+                        data: chartPrecipitation
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        title: {
+                            display: true,
+                            text: "Precipitation (inches)"
+                        }
+                    }
+                }
+            }
+        });
+    </script>
+
+    <h2>Daily Rainfall</h2>
+    <canvas id="rainChart"></canvas>
+    <script>
+        new Chart(document.getElementById("rainChart"), {
+            type: "bar",
+            data: {
+                labels: chartDates,
+                datasets: [
+                    {
+                        label: "Daily Rainfall (in)",
+                        data: chartRain
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                scales: {
+                    y: {
+                        title: {
+                            display: true,
+                            text: "Rainfall (in)"
+                        }
+                    }
+                }
+            }
+        });
+    </script>
+
+    <h2>Daily Snowfall</h2>
+    <canvas id="snowfallChart"></canvas>
+    <script>
+        new Chart(document.getElementById("snowfallChart"), {
+            type: "bar",
+            data: {
+                labels: chartDates,
+                datasets: [
+                    {
+                        label: "Daily Snowfall (in)",
+                        data: chartSnowfall
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                scales: {
+                    y: {
+                        title: {
+                            display: true,
+                            text: "Snowfall (in)"
+                        }
+                    }
+                }
+            }
+        });
+    </script>
+
+
+    <h2>Average Relative Humidity</h2>
+    <canvas id="humidityChart"></canvas>
+    <script>
+        new Chart(document.getElementById("humidityChart"), {
+            type: "line",
+            data: {
+                labels: chartDates,
+                datasets: [
+                    {
+                        label: "Relative Humidity (%)",
+                        data: chartHumidity,
+                        tension: 0.2
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        title: {
+                            display: true,
+                            text: "Relative Humidity (%)"
+                        }
+                    }
+                }
+            }
+        });
+    </script>
+
+    <h2>Maximum Wind Speed</h2>
+    <canvas id="windSpeedChart"></canvas>
+    <script>
+        new Chart(document.getElementById("windSpeedChart"), {
+            type: "line",
+            data: {
+                labels: chartDates,
+                datasets: [
+                    {
+                        label: "Maximum Wind Speed (mph)",
+                        data: chartWindSpeed,
+                        tension: 0.2
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        title: {
+                            display: true,
+                            text: "Wind Speed (mph)"
+                        }
+                    }
+                }
+            }
+        });
+    </script>
+
+    <h2>Daily Maximum Wind Gusts</h2>
+    <canvas id="windGustsChart"></canvas>
+    <script>
+        new Chart(document.getElementById("windGustsChart"), {
+            type: "line",
+            data: {
+                labels: chartDates,
+                datasets: [
+                    {
+                        label: "Maximum Wind Gusts (mph)",
+                        data: chartWindGusts,
+                        tension: 0.2
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        title: {
+                            display: true,
+                            text: "Wind Gusts (mph)"
+                        }
+                    }
+                }
+            }
+        });
+    </script>
+
+    <h2>Average Surface Pressure</h2>
+    <canvas id="pressureChart"></canvas>
+    <script>
+        new Chart(document.getElementById("pressureChart"), {
+            type: "line",
+            data: {
+                labels: chartDates,
+                datasets: [
+                    {
+                        label: "Average Surface Pressure (hPa)",
+                        data: chartPressure,
+                        tension: 0.2
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                scales: {
+                    y: {
+                        title: {
+                            display: true,
+                            text: "Pressure (hPa)"
+                        }
+                    }
+                }
+            }
+        });
+    </script>
+    {% endif %}
+
+    <h2>Daily Weather Observations</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>Date</th>
+                <th>High</th>
+                <th>Low</th>
+                <th>Mean</th>
+                <th>Precipitation</th>
+                <th>Snowfall</th>
+                <th>Rain</th>
+                <th>Humidity</th>
+                <th>Wind</th>
+                <th>Gusts</th>
+                <th>Pressure</th>
+                <th>Weather</th>
+                <th>WMO Code</th>   <!-- WMO: World Meteorological Organization -->
+            </tr>
+        </thead>
+        <tbody>
+            {% if observations %}
+                {% for observation, weather_description in observation_rows %}
+                    <tr>
+                        <td>{{ observation.date }}</td>
+                        <td>{{ observation.temperature_max }} °F</td>
+                        <td>{{ observation.temperature_min }} °F</td>
+                        <td>{{ observation.temperature_mean }} °F</td>
+                        <td>{{ observation.precipitation_sum }} in</td>
+                        <td>{{ observation.snowfall_sum }} in</td>
+                        <td>{{ observation.rain_sum }} in</td>
+                        <td>{{ observation.humidity_mean }} %</td>
+                        <td>{{ observation.wind_speed_max }} mph</td>
+                        <td>{{ observation.wind_gusts_max }} mph</td>
+                        <td>{{ observation.pressure_mean }} hPa</td>
+                        <td>{{ weather_description }}</td>
+                        <td>{{ observation.weather_code }}</td>
+                    </tr>
+                {% endfor %}
+            {% else %}
+                <tr>
+                    <td colspan="13">No observations found for the selected date range.</td>
+                </tr>
+            {% endif %}
+        </tbody>
+    </table>
+</body>
+</html>

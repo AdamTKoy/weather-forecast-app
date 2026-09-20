@@ -1,0 +1,2 @@
+# ignoring settings file until database password gets moved elsewhere
+config/settings.py

@@ -1,0 +1,33 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Locations</title>
+    <link href="{% static 'styles.css' %}" rel="stylesheet">
+</head>
+<body>
+    <h1>Weather Locations</h1>
+
+    <p>Select a location to view its historical weather data.</p>
+    <p>
+        <a href="{% url 'fetch_weather' %}" class="custom-button">Fetch Historical Weather</a>
+    </p>
+
+    <ul class="button-list">
+        {% for location in locations %}
+            <li>
+                <a href="{% url 'historical_weather' location.id %}" class="btn-link">
+                    {{ location.name }}, {{ location.admin1 }}, {{ location.country }}
+                    ({{ location.observation_count }} day{{ location.observation_count|pluralize }})
+                    — Data Range: {{ location.earliest_observation|date:"M j, Y" }} to {{ location.latest_observation|date:"M j, Y" }}
+                    <!-- j is for day WITHOUT leading zero, can also use d if you want leading zero -->
+                </a>
+            </li>
+        {% empty %}
+            <li>No locations found.</li>
+        {% endfor %}
+    </ul>
+</body>
+</html>
