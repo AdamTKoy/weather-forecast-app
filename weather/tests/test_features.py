@@ -3,7 +3,7 @@ from unittest.mock import patch
 from django.test import TestCase
 
 from weather.models import Location, WeatherObservation
-from weather.ml.backtest import backtest_temperature_forecast
+from weather.ml.backtest import backtest_multiple_dates, backtest_temperature_forecast, calculate_historical_seasonal_mae
 from weather.ml.evaluate import calculate_persistence_baseline, calculate_seasonal_baseline, evaluate_temperature_model
 from weather.ml.features import (add_date_features, add_lag_features, add_rolling_features, 
                                     build_features, FEATURE_COLUMNS, get_latest_forecast_features, load_weather_data, 
@@ -622,10 +622,16 @@ class FeatureTests(TestCase):
             },
         ]
 
-        with patch(
-            "weather.ml.backtest.generate_temperature_forecast",
-            return_value=predictions,
-        ) as mock_forecast:
+        with (
+            patch(
+                "weather.ml.backtest.generate_temperature_forecast",
+                return_value=predictions,
+            ) as mock_forecast,
+            patch(
+                "weather.ml.backtest.calculate_historical_seasonal_mae",
+                return_value=3.0,
+            ),
+        ):
             metrics = backtest_temperature_forecast(
                 self.location.id,
                 as_of=date(2025, 1, 8),
@@ -641,3 +647,99 @@ class FeatureTests(TestCase):
         self.assertEqual(metrics["days_evaluated"], 2)
         self.assertAlmostEqual(metrics["mae"], 2.0)
         self.assertAlmostEqual(metrics["rmse"], 2.0)
+        self.assertAlmostEqual(metrics["seasonal_baseline_mae"], 3.0)
+
+    # as_of set for (UP TO) 1/10/2025 so if only date is in the future (1/11/2025), it should be rejected
+    def test_backtest_temperature_forecast_rejects_missing_observations(self):
+        predictions = [
+            {
+                "date": pd.Timestamp("2025-01-11"),
+                "temperature_mean": 35.0,
+            },
+        ]
+
+        with patch(
+            "weather.ml.backtest.generate_temperature_forecast",
+            return_value=predictions,
+        ):
+            with self.assertRaisesRegex(
+                ValueError,
+                "Missing observed temperature for 2025-01-11",
+            ):
+                backtest_temperature_forecast(
+                    self.location.id,
+                    as_of=date(2025, 1, 10),
+                    days=1,
+                )
+
+    def test_backtest_multiple_dates(self):
+        as_of_dates = [
+            date(2025, 1, 8),
+            date(2025, 1, 9),
+        ]
+
+        with patch(
+            "weather.ml.backtest.backtest_temperature_forecast"
+        ) as mock_backtest:
+            mock_backtest.side_effect = [
+                {"days_evaluated": 2, "mae": 2.0, "rmse": 2.5},
+                {"days_evaluated": 2, "mae": 3.0, "rmse": 3.5},
+            ]
+
+            results = backtest_multiple_dates(
+                self.location.id,
+                as_of_dates,
+                days=2,
+            )
+
+        self.assertEqual(len(results), 2)
+        self.assertEqual(
+            [result["as_of"] for result in results],
+            as_of_dates,
+        )
+        self.assertEqual(
+            [result["mae"] for result in results],
+            [2.0, 3.0],
+        )
+        self.assertEqual(mock_backtest.call_count, 2)
+        mock_backtest.assert_any_call(
+            self.location.id,
+            as_of=as_of_dates[0],
+            days=2,
+        )
+        mock_backtest.assert_any_call(
+            self.location.id,
+            as_of=as_of_dates[1],
+            days=2,
+        )
+
+    def test_calculate_historical_seasonal_mae(self):
+        WeatherObservation.objects.create(
+            location=self.location,
+            date=date(2024, 1, 9),
+            temperature_mean=35.0,
+        )
+        WeatherObservation.objects.create(
+            location=self.location,
+            date=date(2024, 1, 10),
+            temperature_mean=37.0,
+        )
+
+        predictions = [
+            {
+                "date": pd.Timestamp("2025-01-09"),
+                "temperature_mean": 40.0,
+            },
+            {
+                "date": pd.Timestamp("2025-01-10"),
+                "temperature_mean": 40.0,
+            },
+        ]
+
+        mae = calculate_historical_seasonal_mae(
+            self.location.id,
+            as_of=date(2025, 1, 8),
+            predictions=predictions,
+        )
+
+        self.assertAlmostEqual(mae, 2.5)

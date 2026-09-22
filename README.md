@@ -1,20 +1,45 @@
 **UNDER CONSTRUCTION**
 
-- Use something like Chart.js on the frontend for graphs
+Across 12 forecast windows issued in 2024, the Random Forest reduced MAE by approximately 9% relative to a historical seasonal baseline, including an 18% reduction during the first seven forecast days.
 
-postgreSQL
-command to interact with databases via terminal: psql postgres
-to list databases: \l
-to quit: \q
+keys returned from fetch call to historical weather data API:
 
-If typing commands into the terminal gets tedious, you can download a visual database management tool. Popular desktop clients for macOS include pgAdmin 4, DBeaver, or the native Mac application TablePlus. They will automatically detect your local Homebrew installation once you point them to localhost
+- 'latitude'
+- 'longitude'
+- 'generationtime_ms'
+- 'utc_offset_seconds'
+- 'timezone'
+- 'timezone_abbreviation'
+- 'elevation'
+- 'daily_units'
+- 'daily'
 
-keys returned from fetch to historical weather data request:
-['latitude', 'longitude', 'generationtime_ms', 'utc_offset_seconds', 'timezone', 'timezone_abbreviation', 'elevation', 'daily_units', 'daily']
+- where 'daily' contains:
+  "time",
+  "temperature_2m_max",
+  "temperature_2m_min",
+  "temperature_2m_mean",
+  "precipitation_sum",
+  "rain_sum",
+  "snowfall_sum",
+  "wind_speed_10m_max",
+  "wind_gusts_10m_max",
+  "cloud_cover_mean",
+  "relative_humidity_2m_mean",
+  "surface_pressure_mean",
+  "weather_code"
 
 Explanation of commands:
 
-python manage.py fetch_weather [location name, ex: "Chicago" or "Springfield, Missouri"] [period start date, ex: 2020-01-01] [period end date, ex: 2020-12-31]
+**python manage.py fetch_weather**
+
+- required arg: location name, ex: "Chicago" or "Springfield, Missouri"
+- required arg: period start date, ex: 2020-01-01
+- required arg: period end date, ex: 2020-12-31 (dates in format YYYY-MM-DD)
+
+EXAMPLE: python manage.py fetch_weather Paris, France 2025-10-01 2025-10-31
+
+Flow:
 
 - Open-Meteo
 - API response
@@ -22,7 +47,12 @@ python manage.py fetch_weather [location name, ex: "Chicago" or "Springfield, Mi
 - transform data
 - PostgreSQL
 
-python manage.py train_model
+**python manage.py train_model**
+
+- required arg: location id (ex: 4 for Chicago--this will need to be updated later since users will not know location's id)
+- optional arg: --horizon (days)
+
+Flow:
 
 - PostgreSQL
 - Feature engineering
@@ -30,87 +60,12 @@ python manage.py train_model
 - Evaluate models
 - Save model
 
-python manage.py generate_forecast
+**python manage.py generate_forecast**
+
+Flow:
 
 - Database
 - Latest weather
 - Saved ML model
 - 30-day predictions
 - Forecast database
-
-**Shell command to compare known 30-day mean temps against model's predictions:**
-python3 manage.py shell <<'PY'
-from datetime import date
-from math import sqrt
-from pathlib import Path
-
-from weather.models import WeatherObservation
-
-predictions = {}
-for line in Path("chicago_january_2026_forecast.txt").read_text().splitlines():
-date_text, temperature_text = line.split(": ", 1)
-predictions[date.fromisoformat(date_text)] = float(
-temperature_text.removesuffix(" °F")
-)
-
-observations = WeatherObservation.objects.filter(
-location_id=4,
-date\_\_in=predictions,
-)
-actual = {obs.date: obs.temperature_mean for obs in observations}
-
-missing = sorted(set(predictions) - set(actual))
-if missing:
-print(f"Missing actual temperatures for: {missing}")
-else:
-errors = [
-predictions[day] - actual[day]
-for day in sorted(predictions)
-]
-mae = sum(abs(error) for error in errors) / len(errors)
-rmse = sqrt(sum(error \*\* 2 for error in errors) / len(errors))
-
-    print(f"Forecast days evaluated: {len(errors)}")
-    print(f"MAE: {mae:.2f} °F")
-    print(f"RMSE: {rmse:.2f} °F")
-
-PY
-
-**Shell command to predict each Jan 2026 day using historical average for that calendar day,**
-**using only observations through December 31, 2025**
-python3 manage.py shell <<'PY'
-from datetime import date
-from math import sqrt
-
-from weather.models import WeatherObservation
-
-historical = WeatherObservation.objects.filter(
-location_id=4,
-date**lte=date(2025, 12, 31),
-temperature_mean**isnull=False,
-)
-
-temperatures_by_day = {}
-for observation in historical:
-key = (observation.date.month, observation.date.day)
-temperatures_by_day.setdefault(key, []).append(
-observation.temperature_mean
-)
-
-actual = WeatherObservation.objects.filter(
-location_id=4,
-date**range=(date(2026, 1, 1), date(2026, 1, 30)),
-temperature_mean**isnull=False,
-)
-
-errors = []
-for observation in actual:
-key = (observation.date.month, observation.date.day)
-historical_temperatures = temperatures_by_day[key]
-prediction = sum(historical_temperatures) / len(historical_temperatures)
-errors.append(prediction - observation.temperature_mean)
-
-print(f"Days evaluated: {len(errors)}")
-print(f"Seasonal MAE: {sum(abs(e) for e in errors) / len(errors):.2f} °F")
-print(f"Seasonal RMSE: {sqrt(sum(e \*\* 2 for e in errors) / len(errors)):.2f} °F")
-PY

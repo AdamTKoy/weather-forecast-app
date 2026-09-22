@@ -1,2 +1,9 @@
 # ignoring settings file until database password gets moved elsewhere
 config/settings.py
+
+# my private notes
+my_notes.txt
+
+# individual test results
+chicago_2025_forecast.txt
+chicago_january_2026_forecast.txt
