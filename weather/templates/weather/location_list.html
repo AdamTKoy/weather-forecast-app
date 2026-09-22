@@ -1,33 +1,17 @@
-{% load static %}
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Locations</title>
-    <link href="{% static 'styles.css' %}" rel="stylesheet">
-</head>
-<body>
-    <h1>Weather Locations</h1>
-
-    <p>Select a location to view its historical weather data.</p>
-    <p>
-        <a href="{% url 'fetch_weather' %}" class="custom-button">Fetch Historical Weather</a>
-    </p>
-
-    <ul class="button-list">
-        {% for location in locations %}
-            <li>
-                <a href="{% url 'historical_weather' location.id %}" class="btn-link">
-                    {{ location.name }}, {{ location.admin1 }}, {{ location.country }}
-                    ({{ location.observation_count }} day{{ location.observation_count|pluralize }})
-                    — Data Range: {{ location.earliest_observation|date:"M j, Y" }} to {{ location.latest_observation|date:"M j, Y" }}
-                    <!-- j is for day WITHOUT leading zero, can also use d if you want leading zero -->
-                </a>
-            </li>
-        {% empty %}
-            <li>No locations found.</li>
-        {% endfor %}
-    </ul>
-</body>
-</html>
+{% extends "weather/base.html" %}
+{% block content %}
+<section class="search-hero">
+<div class="hero-copy"><p class="eyebrow"><span class="status-dot"></span> A world of weather to explore</p>
+<h1>Every city has<br>a weather story<span class="accent">.</span></h1>
+<p class="lead">Explore the patterns of the past.<br>Get a little perspective on what comes next.</p>
+<form class="search-box" method="get" action="{% url 'location_list' %}">
+{{ form.non_field_errors }}<label for="{{ form.query.id_for_label }}">Find your city</label>
+<div class="search-input-row">{{ form.query }}<button type="submit">Search <span aria-hidden="true">↗</span></button></div>{{ form.query.errors }}
+<p class="field-hint">Start with a city name. Choose the matching region below.</p>
+</form></div>
+<div class="weather-art" aria-hidden="true"><div class="orbit orbit-one"></div><div class="orbit orbit-two"></div><div class="sun-disc"></div><div class="cloud cloud-back"></div><div class="cloud cloud-front"></div><div class="art-caption"><span>THE BIGGER PICTURE</span><strong>Patterns. Perspective. Possibility.</strong></div><span class="art-coordinate">PAST ↔ FUTURE</span></div>
+</section>
+{% if cities %}<section class="results-section"><div class="section-heading"><div><p class="eyebrow">Search results</p><h2>Choose a City</h2></div><span class="pill">{{ cities|length }} matches</span></div>
+<ul class="city-grid">{% for city in cities %}<li><form method="post" action="{% url 'location_list' %}">{% csrf_token %}<input type="hidden" name="query" value="{{ form.query.value }}"><input type="hidden" name="city_id" value="{{ city.id }}"><button class="city-card" type="submit"><span class="city-symbol" aria-hidden="true">⌖</span><span><strong>{{ city.name }}</strong><small>{% if city.admin1 %}{{ city.admin1 }}{% if city.country %}, {% endif %}{% endif %}{{ city.country }}</small></span><span class="city-arrow" aria-hidden="true">↗</span></button></form></li>{% endfor %}</ul></section>{% else %}
+<section class="intro-grid" aria-label="What you can explore"><article><span class="feature-number">01 / DISCOVER</span><h2>Start somewhere.</h2><p>Search cities around the world and choose a place to explore.</p></article><article><span class="feature-number">02 / LOOK BACK</span><h2>See the patterns.</h2><p>Bring temperature, rainfall, and seasonal changes into focus.</p></article><article><span class="feature-number">03 / LOOK AHEAD</span><h2>Explore a forecast.</h2><p>View saved experimental predictions alongside historical context.</p></article></section>{% endif %}
+{% endblock %}

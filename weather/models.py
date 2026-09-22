@@ -13,7 +13,6 @@ class Location(models.Model):
     def __str__(self):
         return f"{self.name}, {self.admin1}, {self.country}"
 
-
 class WeatherObservation(models.Model):
     location = models.ForeignKey(
         Location,
@@ -52,4 +51,37 @@ class WeatherObservation(models.Model):
 
     def __str__(self):
         return f"{self.location.name} - {self.date}"
-    
+
+class WeatherForecast(models.Model):
+    location = models.ForeignKey(
+        Location,
+        on_delete=models.CASCADE,
+        related_name="weather_forecasts",
+    )
+
+    # Last observation date used to produce this forecast.
+    forecast_origin = models.DateField()
+
+    # Date whose daily mean temperature we are predicting.
+    forecast_date = models.DateField()
+
+    temperature_mean = models.FloatField()
+
+    # When this prediction was saved or updated.
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["forecast_date"]
+        constraints = [
+            # UniqueConstraint -> update predictions when re-running the same forecast without creating duplicates
+            models.UniqueConstraint(
+                fields=["location", "forecast_origin", "forecast_date"],
+                name="unique_location_forecast_date",
+            )
+        ]
+
+    def __str__(self):
+        return (
+            f"{self.location.name} - {self.forecast_date}: "
+            f"{self.temperature_mean:.1f} °F"
+        )

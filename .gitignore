@@ -1,5 +1,13 @@
-# ignoring settings file until database password gets moved elsewhere
-config/settings.py
+# Local configuration
+.env
+.env.*
+!.env.example
+
+# Python environments and generated files
+venv/
+.venv/
+__pycache__/
+*.py[cod]
 
 # my private notes
 my_notes.txt

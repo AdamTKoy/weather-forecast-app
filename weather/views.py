@@ -1,8 +1,13 @@
+from django.contrib import messages
+from django.views.decorators.http import require_http_methods
+from weather.ml.forecast import generate_temperature_forecast
+from weather.services.forecast_storage import save_temperature_forecast
 from django.shortcuts import get_object_or_404, redirect, render
 from django.db.models import Avg, Count, Max, Min, Sum
+import requests
 from weather.models import Location
-from weather.forms import WeatherImportForm, WeatherFilterForm
-from weather.services.geocoding import geocode_city
+from weather.forms import CitySearchForm, SelectedCityImportForm, WeatherImportForm, WeatherFilterForm
+from weather.services.geocoding import geocode_city, search_cities
 from weather.services.weather_import import import_historical_weather
 from weather.services.weather_codes import get_weather_description
 
@@ -88,25 +93,71 @@ def historical_weather(request, location_id):
         },
     )
 
-# def adminator_test(request):
-
-#     return render(
-#         request,
-#         "weather/index.html",
-#     )
-
+# GET for searches
+# POST for user selection from search results
 def location_list(request):
-    locations = Location.objects.annotate(
-        observation_count=Count("weather_observations"),
-        earliest_observation=Min("weather_observations__date"),
-        latest_observation=Max("weather_observations__date"),
+    submitted_data = (
+        request.POST if request.method == "POST" else request.GET
     )
+    form = CitySearchForm(submitted_data or None)
+    cities = []
+
+    if form.is_bound and form.is_valid():
+        try:
+            cities = search_cities(form.cleaned_data["query"])
+        except (requests.RequestException, ValueError):
+            form.add_error(
+                None,
+                "City search is temporarily unavailable. Please try again.",
+            )
+        else:
+            if not cities:
+                form.add_error(
+                    "query",
+                    "No matching cities found. Try another city name.",
+                )
+            elif request.method == "POST":
+                # Verify the selection against the search provider.
+                selected_id = request.POST.get("city_id", "")
+                selected_city = next(
+                    (
+                        city for city in cities
+                        if str(city["id"]) == selected_id
+                    ),
+                    None,
+                )
+
+                if selected_city is None:
+                    form.add_error(
+                        None,
+                        "Please search again and choose a matching city.",
+                    )
+                else:
+                    location, _ = Location.objects.update_or_create(
+                        open_meteo_id=selected_city["id"],
+                        defaults={
+                            "name": selected_city["name"],
+                            "latitude": selected_city["latitude"],
+                            "longitude": selected_city["longitude"],
+                            "timezone": selected_city.get("timezone", ""),
+                            "admin1": selected_city.get("admin1", ""),
+                            "country": selected_city.get("country", ""),
+                            "country_code": selected_city.get(
+                                "country_code", ""
+                            ),
+                        },
+                    )
+                    return redirect(
+                        "historical_weather",
+                        location_id=location.id,
+                    )
 
     return render(
         request,
         "weather/location_list.html",
         {
-            "locations": locations,
+            "form": form,
+            "cities": cities,
         },
     )
 
@@ -140,5 +191,88 @@ def fetch_weather(request):
         "weather/fetch_weather.html",
         {
             "form": form,
+        },
+    )
+
+@require_http_methods(["GET", "POST"])
+def forecast(request, location_id):
+    location = get_object_or_404(Location, id=location_id)
+
+    generation_error = None
+    if request.method == "POST":
+        try:
+            predictions = generate_temperature_forecast(location.id, days=7)
+            save_temperature_forecast(location.id, predictions)
+        except ValueError as exc:
+            generation_error = str(exc)
+        else:
+            messages.success(request, "Your seven-day forecast has been generated and saved.")
+            return redirect("forecast", location_id=location.id)
+
+    latest_observation = location.weather_observations.aggregate(
+        latest=Max("date")
+    )["latest"]
+
+    latest_origin = location.weather_forecasts.aggregate(
+        latest=Max("forecast_origin")
+    )["latest"]
+
+    forecasts = location.weather_forecasts.none()
+
+    if latest_origin is not None:
+        forecasts = location.weather_forecasts.filter(
+            forecast_origin=latest_origin,
+        ).order_by("forecast_date")[:7]
+
+    return render(
+        request,
+        "weather/forecast.html",
+        {
+            "location": location,
+            "forecast_origin": latest_origin,
+            "latest_observation": latest_observation,
+            "generation_error": generation_error,
+            "forecasts": forecasts,
+        },
+    )
+
+def import_city_weather(request, location_id):
+    location = get_object_or_404(Location, id=location_id)
+
+    form = SelectedCityImportForm(
+        request.POST if request.method == "POST" else None
+    )
+
+    if request.method == "POST" and form.is_valid():
+        try:
+            import_historical_weather(
+                id=location.open_meteo_id,
+                location_name=location.name,
+                admin1=location.admin1,
+                country=location.country,
+                country_code=location.country_code,
+                latitude=location.latitude,
+                longitude=location.longitude,
+                start_date=form.cleaned_data["start_date"].isoformat(),
+                end_date=form.cleaned_data["end_date"].isoformat(),
+            )
+        except (requests.RequestException, ValueError):
+            form.add_error(
+                None,
+                "Unable to import weather for this date range. "
+                "Please try again.",
+            )
+        else:
+            return redirect(
+                "historical_weather",
+                location_id=location.id,
+            )
+
+    return render(
+        request,
+        "weather/fetch_weather.html",
+        {
+            "form": form,
+            "location": location,
         },
     )

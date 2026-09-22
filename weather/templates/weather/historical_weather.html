@@ -1,154 +1,25 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Historical Weather</title>
-    <style>
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 20px;
-        }
-
-        th,
-        td {
-            border: 1px solid #ddd;
-            padding: 8px;
-            text-align: center;
-        }
-
-        th {
-            font-weight: bold;
-        }
-    </style>
-</head>
-<body>
-    <p>
-        <a href="{% url 'location_list' %}">← Back to Locations</a>
-    </p>
-
-    <h1>{{ location.name }}, {{ location.admin1 }}, {{ location.country }}</h1>
-    <p>
-        <strong>Coordinates (latitude, longitude):</strong>
-        {{ location.latitude|floatformat:4 }}, {{ location.longitude|floatformat:4 }}
-    </p>
-    <p>
-        <strong>Timezone:</strong>
-        {{ location.timezone }}
-    </p>
-
-    <h2>Filter Historical Data</h2>
-    <p>Enter a start date, end date, or both to filter the historical weather data.</p>
-
-    <form method="get">
-        {{ filter_form.as_p }}
-
-        <button type="submit">Apply Filter</button>
-        <a href="{% url 'historical_weather' location.id %}">Clear Filter</a>
-    </form>
-
-    <p>
-        <strong>Historical Data:</strong>
-        {% if observations %}
-            {{ observations.first.date|date:"M j, Y" }} through {{ observations.last.date|date:"M j, Y" }}
-        {% else %}
-            No observations found for the selected date range.
-        {% endif %}
-    </p>
-
-    {% if not observations %}
-        <p><strong>No summary statistics available.</strong></p>
-    {% endif %}
-
-    {% if observations %}
-    <h3>Summary Values</h3>
-    <table>
-        <thead>
-            <tr>
-                <th>Observation Count</th>
-                <th>Highest Temp</th>
-                <th>Lowest Temp</th>
-                <th>Avg Temp</th>
-                <th>Avg Daily Precip</th>
-                <th>Total Precip</th>
-                <th>Avg Humidity</th>
-                <th>Avg Wind Speed</th>
-                <th>Avg Surface Pressure</th>
-                <th>Avg Wind Gusts</th>
-            </tr>
-        </thead>
-        <tbody>
-                <tr>
-                    <td>{{ observation_count }}</td>
-                    <td>        
-                        {% if highest_temperature is not None %}
-                            {{ highest_temperature|floatformat:1 }} °F
-                        {% else %}
-                            N/A
-                        {% endif %}
-                    </td>
-                    <td>
-                        {% if lowest_temperature is not None %}
-                            {{ lowest_temperature|floatformat:1 }} °F
-                        {% else %}
-                            N/A
-                        {% endif %}
-                    </td>
-                    <td>
-                        {% if average_temperature is not None %}
-                            {{ average_temperature|floatformat:1 }} °F
-                        {% else %}
-                            N/A
-                        {% endif %}
-                    </td>
-                    <td>
-                        {% if average_precipitation is not None %}
-                            {{ average_precipitation|floatformat:2 }} in
-                        {% else %}
-                            N/A
-                        {% endif %}
-                    </td>
-                    <td>
-                        {% if total_precipitation is not None %}
-                            {{ total_precipitation|floatformat:2 }} in
-                        {% else %}
-                            N/A
-                        {% endif %}
-                    </td>
-                    <td>
-                        {% if average_humidity is not None %}
-                            {{ average_humidity|floatformat:2 }}%
-                        {% else %}
-                            N/A
-                        {% endif %}
-                    </td>
-                    <td>
-                        {% if average_wind_speed is not None %}
-                            {{ average_wind_speed|floatformat:2 }} mph
-                        {% else %}
-                            N/A
-                        {% endif %}
-                    </td>
-                    <td>
-                        {% if average_pressure is not None %}
-                            {{ average_pressure|floatformat:2 }} hPa
-                        {% else %}
-                            N/A
-                        {% endif %}
-                    </td>
-                    <td>
-                        {% if average_wind_gusts is not None %}
-                            {{ average_wind_gusts|floatformat:2 }} mph
-                        {% else %}
-                            N/A
-                        {% endif %}
-                    </td>
-                </tr>
-
-        </tbody>
-    </table>
-    {% endif %}
-
+{% extends "weather/base.html" %}
+{% block title %}{{ location.name }} · Historical Weather{% endblock %}
+{% block content %}
+<a class="back-link" href="{% url 'location_list' %}">← Find another city</a>
+<div class="section-heading page-heading"><div><p class="eyebrow">Historical Weather</p><h1>{{ location.name }}<span class="accent">.</span></h1><p class="lead">{{ location.admin1 }}{% if location.admin1 %}, {% endif %}{{ location.country }}</p><p class="location-meta">{{ location.latitude|floatformat:4 }}, {{ location.longitude|floatformat:4 }} · {{ location.timezone }}</p></div><div class="page-actions"><a class="button button-secondary" href="{% url 'import_city_weather' location.id %}">Import Historical Weather for This City</a><a class="button" href="{% url 'forecast' location.id %}">View Temperature Forecast ↗</a></div></div>
+<section class="panel filter-panel"><div><p class="eyebrow">Choose your window</p><h2>Filter Historical Data</h2></div><form method="get" class="filter-form">{{ filter_form.as_p }}<button type="submit">Apply Filter</button><a href="{% url 'historical_weather' location.id %}">Clear Filter</a></form></section>
+{% if observations %}
+<div class="section-heading"><p class="muted">{{ observations.first.date|date:"M j, Y" }} through {{ observations.last.date|date:"M j, Y" }}</p><span class="pill">{{ observation_count }} observations</span></div>
+<div class="metric-grid">
+<article class="metric-card"><p>Average temperature</p><strong>{% if average_temperature is not None %}{{ average_temperature|floatformat:1 }}<small> °F</small>{% else %}N/A{% endif %}</strong></article>
+<article class="metric-card"><p>Highest temperature</p><strong>{% if highest_temperature is not None %}{{ highest_temperature|floatformat:1 }}<small> °F</small>{% else %}N/A{% endif %}</strong></article>
+<article class="metric-card"><p>Lowest temperature</p><strong>{% if lowest_temperature is not None %}{{ lowest_temperature|floatformat:1 }}<small> °F</small>{% else %}N/A{% endif %}</strong></article>
+<article class="metric-card"><p>Total precipitation</p><strong>{% if total_precipitation is not None %}{{ total_precipitation|floatformat:2 }}<small> in</small>{% else %}N/A{% endif %}</strong></article>
+<article class="metric-card"><p>Avg daily precipitation</p><strong>{% if average_precipitation is not None %}{{ average_precipitation|floatformat:2 }}<small> in</small>{% else %}N/A{% endif %}</strong></article>
+<article class="metric-card"><p>Average humidity</p><strong>{% if average_humidity is not None %}{{ average_humidity|floatformat:2 }}<small> %</small>{% else %}N/A{% endif %}</strong></article>
+<article class="metric-card"><p>Average wind speed</p><strong>{% if average_wind_speed is not None %}{{ average_wind_speed|floatformat:2 }}<small> mph</small>{% else %}N/A{% endif %}</strong></article>
+<article class="metric-card"><p>Average wind gusts</p><strong>{% if average_wind_gusts is not None %}{{ average_wind_gusts|floatformat:2 }}<small> mph</small>{% else %}N/A{% endif %}</strong></article>
+<article class="metric-card"><p>Average surface pressure</p><strong>{% if average_pressure is not None %}{{ average_pressure|floatformat:2 }}<small> hPa</small>{% else %}N/A{% endif %}</strong></article>
+</div>
+{% else %}<section class="panel empty-state"><span class="empty-symbol" aria-hidden="true">⌁</span><h2>A little history goes a long way.</h2><p>No observations found for the selected date range.</p><p class="muted">No summary statistics available. Import weather for this city, or adjust your date filter.</p><a class="button" href="{% url 'import_city_weather' location.id %}">Import Historical Weather →</a></section>{% endif %}
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>if (window.Chart) { Chart.defaults.font.family = "system-ui, sans-serif"; Chart.defaults.color = "#617777"; Chart.defaults.borderColor = "#e5eeeb"; Chart.defaults.maintainAspectRatio = false; Chart.defaults.elements.point.radius = 0; Chart.defaults.elements.point.hitRadius = 12; Chart.defaults.plugins.legend.position = "bottom"; Chart.defaults.plugins.legend.labels.usePointStyle = true; Chart.defaults.plugins.legend.labels.boxWidth = 8; Chart.defaults.plugins.legend.labels.padding = 20; Chart.defaults.scale.ticks.maxTicksLimit = 7; }</script>
 
     {{ dates|json_script:"chart-dates" }}
     {{ temperature_max|json_script:"chart-temperature-max" }}
@@ -207,21 +78,20 @@
 
         <!--CHART DEFINITION SECTION-->
         {% if observations %}
-        <h2>Daily Temperature</h2>
-        <canvas id="temperatureChart"></canvas>
+        <section class="panel chart-panel"><h2>Daily Temperature</h2><div class="chart-wrap"><canvas id="temperatureChart" role="img" aria-label="Daily Temperature chart. Values are available in the observations table below."></canvas></div><p class="chart-fallback" hidden>Chart unavailable. See the observations table below.</p></section>
         <script>
-            new Chart(document.getElementById("temperatureChart"), {
+            if (window.Chart) new Chart(document.getElementById("temperatureChart"), {
                 type: "line",
                 data: {
                     labels: chartDates,
                     datasets: [
                         {
-                            label: "High Temperature (°F)",
+                            borderColor: "#db8c55", backgroundColor: "#db8c5520", label: "High Temperature (°F)",
                             data: chartTemperatureMax,
                             tension: 0.2
                         },
                         {
-                            label: "Low Temperature (°F)",
+                            borderColor: "#278f88", backgroundColor: "#278f8820", label: "Low Temperature (°F)",
                             data: chartTemperatureMin,
                             tension: 0.2
                         }
@@ -241,16 +111,15 @@
             });
         </script>
 
-    <h2>Daily Precipitation</h2>
-    <canvas id="precipitationChart"></canvas>
+    <section class="panel chart-panel"><h2>Daily Precipitation</h2><div class="chart-wrap"><canvas id="precipitationChart" role="img" aria-label="Daily Precipitation chart. Values are available in the observations table below."></canvas></div><p class="chart-fallback" hidden>Chart unavailable. See the observations table below.</p></section>
     <script>
-        new Chart(document.getElementById("precipitationChart"), {
+        if (window.Chart) new Chart(document.getElementById("precipitationChart"), {
             type: "bar",
             data: {
                 labels: chartDates,
                 datasets: [
                     {
-                        label: "Precipitation (in)",
+                        backgroundColor: "#74aaa4", borderRadius: 3, label: "Precipitation (in)",
                         data: chartPrecipitation
                     }
                 ]
@@ -270,10 +139,9 @@
         });
     </script>
 
-    <h2>Daily Rainfall</h2>
-    <canvas id="rainChart"></canvas>
+    <section class="panel chart-panel"><h2>Daily Rainfall</h2><div class="chart-wrap"><canvas id="rainChart" role="img" aria-label="Daily Rainfall chart. Values are available in the observations table below."></canvas></div><p class="chart-fallback" hidden>Chart unavailable. See the observations table below.</p></section>
     <script>
-        new Chart(document.getElementById("rainChart"), {
+        if (window.Chart) new Chart(document.getElementById("rainChart"), {
             type: "bar",
             data: {
                 labels: chartDates,
@@ -298,10 +166,9 @@
         });
     </script>
 
-    <h2>Daily Snowfall</h2>
-    <canvas id="snowfallChart"></canvas>
+    <section class="panel chart-panel"><h2>Daily Snowfall</h2><div class="chart-wrap"><canvas id="snowfallChart" role="img" aria-label="Daily Snowfall chart. Values are available in the observations table below."></canvas></div><p class="chart-fallback" hidden>Chart unavailable. See the observations table below.</p></section>
     <script>
-        new Chart(document.getElementById("snowfallChart"), {
+        if (window.Chart) new Chart(document.getElementById("snowfallChart"), {
             type: "bar",
             data: {
                 labels: chartDates,
@@ -327,10 +194,9 @@
     </script>
 
 
-    <h2>Average Relative Humidity</h2>
-    <canvas id="humidityChart"></canvas>
+    <section class="panel chart-panel"><h2>Average Relative Humidity</h2><div class="chart-wrap"><canvas id="humidityChart" role="img" aria-label="Average Relative Humidity chart. Values are available in the observations table below."></canvas></div><p class="chart-fallback" hidden>Chart unavailable. See the observations table below.</p></section>
     <script>
-        new Chart(document.getElementById("humidityChart"), {
+        if (window.Chart) new Chart(document.getElementById("humidityChart"), {
             type: "line",
             data: {
                 labels: chartDates,
@@ -357,10 +223,9 @@
         });
     </script>
 
-    <h2>Maximum Wind Speed</h2>
-    <canvas id="windSpeedChart"></canvas>
+    <section class="panel chart-panel"><h2>Maximum Wind Speed</h2><div class="chart-wrap"><canvas id="windSpeedChart" role="img" aria-label="Maximum Wind Speed chart. Values are available in the observations table below."></canvas></div><p class="chart-fallback" hidden>Chart unavailable. See the observations table below.</p></section>
     <script>
-        new Chart(document.getElementById("windSpeedChart"), {
+        if (window.Chart) new Chart(document.getElementById("windSpeedChart"), {
             type: "line",
             data: {
                 labels: chartDates,
@@ -387,10 +252,9 @@
         });
     </script>
 
-    <h2>Daily Maximum Wind Gusts</h2>
-    <canvas id="windGustsChart"></canvas>
+    <section class="panel chart-panel"><h2>Daily Maximum Wind Gusts</h2><div class="chart-wrap"><canvas id="windGustsChart" role="img" aria-label="Daily Maximum Wind Gusts chart. Values are available in the observations table below."></canvas></div><p class="chart-fallback" hidden>Chart unavailable. See the observations table below.</p></section>
     <script>
-        new Chart(document.getElementById("windGustsChart"), {
+        if (window.Chart) new Chart(document.getElementById("windGustsChart"), {
             type: "line",
             data: {
                 labels: chartDates,
@@ -417,10 +281,9 @@
         });
     </script>
 
-    <h2>Average Surface Pressure</h2>
-    <canvas id="pressureChart"></canvas>
+    <section class="panel chart-panel"><h2>Average Surface Pressure</h2><div class="chart-wrap"><canvas id="pressureChart" role="img" aria-label="Average Surface Pressure chart. Values are available in the observations table below."></canvas></div><p class="chart-fallback" hidden>Chart unavailable. See the observations table below.</p></section>
     <script>
-        new Chart(document.getElementById("pressureChart"), {
+        if (window.Chart) new Chart(document.getElementById("pressureChart"), {
             type: "line",
             data: {
                 labels: chartDates,
@@ -447,7 +310,7 @@
     </script>
     {% endif %}
 
-    <h2>Daily Weather Observations</h2>
+    <section class="panel observations-panel"><h2>Daily Weather Observations</h2><p class="muted">The detail behind the patterns. Scroll horizontally to explore every measurement.</p><div class="table-scroll" tabindex="0" role="region" aria-label="Daily weather observations">
     <table>
         <thead>
             <tr>
@@ -491,6 +354,6 @@
                 </tr>
             {% endif %}
         </tbody>
-    </table>
-</body>
-</html>
+    </table></div></section>
+<script>if (!window.Chart) document.querySelectorAll(".chart-fallback").forEach(el => { el.hidden = false; });</script>
+{% endblock %}

@@ -1,0 +1,34 @@
+{% extends "weather/base.html" %}
+{% block title %}Temperature Forecast — {{ location.name }}{% endblock %}
+{% block content %}
+<a class="back-link" href="{% url 'historical_weather' location.id %}">← Historical Weather</a>
+<div class="section-heading page-heading"><div><p class="eyebrow">A look ahead</p><h1>{{ location.name }}<span class="accent">.</span></h1><p class="lead">Temperature Forecast</p></div><span class="pill experimental">Experimental model</span></div>
+<p class="muted">Predictions of daily mean temperature, rather than daily highs or lows.</p>
+{% for message in messages %}<div class="notice" role="status">{{ message }}</div>{% endfor %}
+<section class="panel generation-panel">
+    <div>
+        <p class="eyebrow">Your next seven days</p>
+        <h2>Generate a forecast</h2>
+        {% if latest_observation %}
+        <p class="muted">Use observations through <strong>{{ latest_observation|date:"F j, Y" }}</strong> to predict the following seven days. To forecast more recent dates, import newer observations first.</p>
+        {% else %}
+        <p class="muted">Import historical observations for this city before generating a forecast.</p>
+        {% endif %}
+        <a href="{% url 'import_city_weather' location.id %}">Import historical weather →</a>
+    </div>
+    <form method="post" data-busy-form>
+        {% csrf_token %}
+        <button type="submit" data-busy-label="Generating forecast…" {% if not latest_observation %}disabled{% endif %}>Generate 7-day forecast ↗</button>
+        <p class="field-hint" role="status" data-form-status data-busy-message="Generating seven daily predictions. Please keep this page open.">Generation may take a moment.</p>
+    </form>
+</section>
+{% if generation_error %}
+<div class="errorlist" role="alert"><strong>Unable to generate a forecast.</strong> {{ generation_error }} Import a longer, continuous date range with complete recent observations, then try again.</div>
+{% endif %}
+{% if forecasts %}
+<div class="notice"><span aria-hidden="true">◷</span><p>Based on observations through <strong>{{ forecast_origin|date:"F j, Y" }}</strong>. Forecast dates follow that observation date and may be in the past.</p></div>
+<section class="forecast-grid" aria-label="Daily mean temperature predictions">{% for prediction in forecasts %}<article class="forecast-card" data-temperature="{{ prediction.temperature_mean }}" data-day="{{ prediction.forecast_date|date:'D, M j' }}"><p>{{ prediction.forecast_date|date:"D" }}</p><span class="forecast-date">{{ prediction.forecast_date|date:"M j, Y" }}</span><span class="temperature-icon" aria-hidden="true">♧</span><strong>{{ prediction.temperature_mean|floatformat:1 }} °F</strong><small>Daily mean</small></article>{% endfor %}</section>
+<section class="panel trend-panel"><div class="section-heading"><div><p class="eyebrow">The shape of the forecast</p><h2>Temperature outlook</h2></div><span class="legend"><i></i> Predicted mean · °F</span></div><div id="forecast-trend" class="forecast-trend" tabindex="0" role="region" aria-label="Temperature trend; exact values are shown in the daily cards above"></div></section>
+{% else %}<section class="panel empty-state"><span class="empty-symbol" aria-hidden="true">◷</span><h2>A forecast starts with history.</h2><p>No saved forecast is available for this location yet.</p><p class="muted">You can still explore or import this city's historical weather.</p><a class="button" href="{% url 'historical_weather' location.id %}">Explore Historical Weather →</a></section>{% endif %}
+{% endblock %}
+{% block scripts %}{% load static %}<script src="{% static 'weather-ui.js' %}" defer></script>{% endblock %}

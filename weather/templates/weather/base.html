@@ -1,0 +1,18 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{% block title %}Weather Explorer{% endblock %}</title>
+<link rel="stylesheet" href="{% static 'styles.css' %}">
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="site-header"><div class="header-inner">
+<a class="brand" href="{% url 'location_list' %}"><span class="brand-icon" aria-hidden="true">◒</span> Weather Explorer<span class="brand-dot">.</span></a>
+<nav aria-label="Main navigation"><a href="{% url 'location_list' %}" {% if not location %}aria-current="page"{% endif %}>Find a city</a>{% if location %}<a href="{% url 'historical_weather' location.id %}" {% if request.resolver_match.url_name == 'historical_weather' %}aria-current="page"{% endif %}>History</a><a href="{% url 'forecast' location.id %}" {% if request.resolver_match.url_name == 'forecast' %}aria-current="page"{% endif %}>Forecast</a>{% endif %}</nav>
+</div></header>
+<main id="main" class="page-shell">{% block content %}{% endblock %}</main>
+<footer class="site-footer"><span>Weather Explorer · A little more perspective on the weather.</span><span>Data from <a href="https://open-meteo.com/">Open-Meteo</a> · Temperatures in °F</span></footer>
+{% block scripts %}{% endblock %}
+</body></html>

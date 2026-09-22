@@ -29,12 +29,22 @@ def geocode_city(search_location):
 
     return results[0]
 
-    # TODO: validate locations with same city names (ie, Springfield) using admin1
-    # for result in results:
-    #     if (
-    #         result.get("name", "").lower() == search_location.lower()
-    #         and result.get("admin1")
-    #     ):
-    #         return result
+def search_cities(query):
+    query = query.strip()
 
-    # return results[0]
+    if len(query) < 2:
+        return []
+
+    response = requests.get(
+        GEOCODING_URL,
+        params={
+            "name": query,
+            "count": 10,
+            "language": "en",
+            "format": "json",
+        },
+        timeout=10,
+    )
+    response.raise_for_status()
+
+    return response.json().get("results") or []

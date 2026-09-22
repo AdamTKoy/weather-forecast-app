@@ -3,13 +3,18 @@
 #
 
 from django.urls import path
-from weather.views import fetch_weather, historical_weather, location_list #, adminator_test
+from weather.views import (fetch_weather, forecast, historical_weather, import_city_weather, location_list)
 
 urlpatterns = [
     path(
-        "",
-        location_list,
-        name="location_list",
+        "fetch/",
+        fetch_weather,
+        name="fetch_weather",
+    ),
+    path(
+        "<int:location_id>/forecast/",
+        forecast,
+        name="forecast",
     ),
     path(
         "<int:location_id>/",
@@ -17,8 +22,13 @@ urlpatterns = [
         name="historical_weather",
     ),
     path(
-        "fetch/",
-        fetch_weather,
-        name="fetch_weather",
+        "<int:location_id>/import/",
+        import_city_weather,
+        name="import_city_weather",
+    ),
+    path(
+        "",
+        location_list,
+        name="location_list",
     ),
 ]

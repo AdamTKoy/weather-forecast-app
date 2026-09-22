@@ -1,21 +1,8 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Fetch Historical Weather</title>
-</head>
-<body>
-    <h1>Fetch Historical Weather</h1>
-
-    <form method="post">
-        {% csrf_token %}
-
-        {{ form.as_p }}
-
-        <button type="submit">Fetch Weather</button>
-    </form>
-
-    <p>
-        <a href="{% url 'location_list' %}">← Back to Locations</a>
-    </p>
-</body>
-</html>
+{% extends "weather/base.html" %}
+{% block title %}Fetch Historical Weather · Weather Explorer{% endblock %}
+{% block content %}
+<a class="back-link" href="{% if location %}{% url 'historical_weather' location.id %}{% else %}{% url 'location_list' %}{% endif %}">← {% if location %}Back to {{ location.name }}{% else %}Find a city{% endif %}</a>
+<div class="import-layout"><section><p class="eyebrow">Build your weather history</p><h1>Look back.<br>Discover more<span class="accent">.</span></h1><p class="lead">Every observation adds a little context.</p>{% if location %}<div class="location-badge"><span aria-hidden="true">⌖</span><div><strong>{{ location.name }}</strong><small>{{ location.admin1 }}{% if location.admin1 %}, {% endif %}{{ location.country }}</small></div></div>{% endif %}<p class="muted">Choose a date range to explore daily temperatures, precipitation, wind, and more.</p></section>
+<section class="panel import-panel"><p class="eyebrow">Historical observations</p><h2>Fetch Historical Weather</h2><p class="muted">Start with a short range to explore the dashboard.</p><form method="post" class="stacked-form" data-busy-form>{% csrf_token %}{{ form.as_p }}<button type="submit" data-busy-label="Importing weather…">Fetch Weather <span aria-hidden="true">↓</span></button><p class="field-hint" role="status" data-form-status>Data is retrieved from Open-Meteo. Larger ranges may take a moment.</p></form></section></div>
+{% endblock %}
+{% block scripts %}{% load static %}<script src="{% static 'weather-ui.js' %}" defer></script>{% endblock %}

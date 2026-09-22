@@ -19,6 +19,7 @@ from django.urls import include, path
 from weather import views
 
 urlpatterns = [
+    path("", views.location_list, name="home"),
     path('admin/', admin.site.urls),
     path("weather/", include("weather.urls")),
 ]

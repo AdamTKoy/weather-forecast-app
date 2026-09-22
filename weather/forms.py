@@ -30,7 +30,7 @@ class WeatherImportForm(forms.Form):
                 "End date must be on or after the start date."
             )
 
-        if end_date > date.today():
+        if end_date and end_date > date.today():
             raise forms.ValidationError(
                 "End Date cannot be in the future."
             )
@@ -43,6 +43,10 @@ class WeatherImportForm(forms.Form):
                 )
 
         return cleaned_data
+
+# inherits date fields and validation while removing location input
+class SelectedCityImportForm(WeatherImportForm):
+    location = None
 
 class WeatherFilterForm(forms.Form):
     start_date = forms.DateField(
@@ -73,9 +77,20 @@ class WeatherFilterForm(forms.Form):
                     "The selected date range cannot exceed 10 years."
                 )
 
-            if end_date and end_date > date.today():
+            if end_date > date.today():
                 raise forms.ValidationError(
                     "End Date cannot be in the future."
                 )
 
         return cleaned_data
+
+class CitySearchForm(forms.Form):
+    query = forms.CharField(
+        label="City",
+        min_length=2,
+        max_length=100,
+        strip=True,
+        widget=forms.TextInput(
+            attrs={"placeholder": "For example, Springfield"}
+        ),
+    )

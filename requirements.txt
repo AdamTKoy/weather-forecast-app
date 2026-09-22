@@ -1,3 +1,6 @@
 Django
 requests
+pandas
 psycopg[binary]
+python-dotenv
+scikit-learn
