@@ -1,7 +1,14 @@
 # Weather Explorer
 
 A Django application for searching cities, exploring historical weather,
-and viewing experimental daily mean-temperature forecasts.
+and viewing experimental daily mean-temperature forecasts. This app can
+pull from open-meteo's extensive store of historical weather observations
+and generate a 7-day mean temp forecast after the most-recently pulled date.
+
+This app was intentionally kept simple as global weather is a complex and
+highly unpredictable system. The primary goals were to experiment with machine
+learning to make predictions and explore some of the most appropriate
+development tools for this process.
 
 ## Features
 
@@ -74,6 +81,26 @@ A short import is sufficient to demonstrate the history page.
 For meaningful forecasting experiments, import several years of
 continuous daily observations.
 
+![Main Page](screenshots/01_main_page.png)
+
+![Location Search](screenshots/02_location_search.png)
+
+![Location Results](screenshots/03_location_results.png)
+
+![Location_Page_Empty](screenshots/04_location_page_empty.png)
+
+![Action Buttons](screenshots/05_more_action_buttons.png)
+
+![Fetch Weather](screenshots/06_fetch_weather.png)
+
+![Summary Stats](screenshots/07_fetch_weather_result_00summary.png)
+
+![Summary Charts 01](screenshots/07_fetch_weather_result_01charts.png)
+
+![Summary Charts_02](screenshots/07_fetch_weather_result_02charts.png)
+
+![Weather Observations](screenshots/07_fetch_weather_result_03dailyStats.png)
+
 ## Generating forecasts
 
 Open a city’s **Forecast** page and select **Generate 7-day forecast**.
@@ -104,6 +131,12 @@ for the same location, forecast origin, and target date.
 
 The webpage displays up to seven days from the latest saved forecast
 origin. Viewing the page does not train models; submitting the generation form does.
+
+![Forecast Start Page](screenshots/08_forecast_empty.png)
+
+![Forecast 7 Day Mean Temps](screenshots/09_forecast_7day.png)
+
+![Forecast 7 Day Mean Temp Chart](screenshots/09_forecast_chart.png)
 
 ## Evaluation
 
